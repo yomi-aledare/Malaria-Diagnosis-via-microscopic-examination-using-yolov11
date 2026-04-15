@@ -278,7 +278,7 @@ def login_page():
         <div style='text-align:center; padding: 3rem 0 2rem;'>
             <div style='font-size:3.5rem;'>🔬</div>
             <h1 style='font-family:"Playfair Display",serif; color:#0A2342;
-                       font-size:2.4rem; margin:0.3rem 0 0;'>MalariaScope</h1>
+                       font-size:2.4rem; margin:0.3rem 0 0;'>BoboMal</h1>
             <p style='color:#888; font-size:0.85rem; letter-spacing:2px;
                       text-transform:uppercase; margin-top:0.3rem;'>
                 YOLO-Powered Blood Smear Analysis
@@ -322,7 +322,7 @@ def render_sidebar():
         st.markdown("""
         <div class="sidebar-logo">
             <div style="font-size:2rem;">🔬</div>
-            <h1>MalariaScope</h1>
+            <h1>BoboMal</h1>
             <p>Diagnostic System</p>
         </div>
         """, unsafe_allow_html=True)
@@ -396,16 +396,16 @@ def home_page():
     <div style='background:linear-gradient(135deg,#0A2342,#122d56);
                 border-radius:18px; padding:2.2rem 2.8rem; color:#EFE9E7;'>
         <h3 style='font-family:"Playfair Display",serif; color:#FF7F50;
-                   margin-top:0;'>Welcome to MalariaScope</h3>
+                   margin-top:0;'>Welcome to BoboMal</h3>
         <p style='line-height:1.75; opacity:0.85; max-width:680px;'>
-            This system uses <strong style='color:#FF7F50;'>YOLOv8 object detection</strong>
+            This system uses <strong style='color:#FF7F50;'>YOLOv11 object detection</strong>
             on Giemsa-stained blood smear images to identify <em>Plasmodium</em> parasites
             in real time. Navigate to the <strong>Diagnosis</strong> page to upload a sample
             and receive an instant analysis.
         </p>
         <div style='margin-top:1.2rem; display:flex; gap:0.6rem; flex-wrap:wrap;'>
             <span style='background:rgba(255,127,80,0.2); color:#FF7F50; padding:4px 14px;
-                         border-radius:20px; font-size:0.8rem; font-weight:600;'>YOLOv8</span>
+                         border-radius:20px; font-size:0.8rem; font-weight:600;'>YOLOv11</span>
             <span style='background:rgba(255,127,80,0.2); color:#FF7F50; padding:4px 14px;
                          border-radius:20px; font-size:0.8rem; font-weight:600;'>Blood Smear</span>
             <span style='background:rgba(255,127,80,0.2); color:#FF7F50; padding:4px 14px;
@@ -542,7 +542,7 @@ def diagnosis_page():
                     </div>
                     <div class="stat-row">
                         <span>Model</span>
-                        <span class="val">YOLOv8</span>
+                        <span class="val">YOLOv11</span>
                     </div>
                     <div class="stat-row">
                         <span>Confidence</span>
@@ -575,7 +575,7 @@ def about_page():
  
     st.markdown("""
     <div class="about-card">
-        <h2>🔬 MalariaScope</h2>
+        <h2>🔬 BoboMal</h2>
         <p>
             This project uses <strong>digital blood smear images</strong> to diagnose
             malaria parasites using <strong>YOLO (You Only Look Once) object detection</strong>.
@@ -593,7 +593,7 @@ def about_page():
             Key Technologies
         </h3>
         <div>
-            <span class="tag">YOLOv8</span>
+            <span class="tag">YOLOv11</span>
             <span class="tag">Python</span>
             <span class="tag">Streamlit</span>
             <span class="tag">OpenCV</span>
@@ -617,7 +617,7 @@ def about_page():
                 <div style='font-size:1.5rem;'>🧠</div>
                 <strong>2. YOLO Inference</strong>
                 <p style='font-size:0.85rem; color:#666; margin:0.3rem 0 0;'>
-                    YOLOv8 scans the smear at cell level, detecting parasite morphology in milliseconds.
+                    YOLOv11 scans the smear at cell level, detecting parasite morphology in milliseconds.
                 </p>
             </div>
             <div style='background:#f8f8f8; border-radius:12px; padding:1.2rem;'>
@@ -638,8 +638,12 @@ def about_page():
     </div>
     """, unsafe_allow_html=True)
  
+# MODEL INFERENCE FUNCTION 
+# ══════════════════════════════════════════════════════════════════════════════
+
+
  
- # ROUTER
+# PAGE ROUTER
 # ══════════════════════════════════════════════════════════════════════════════
 if not st.session_state.authenticated:
     login_page()
