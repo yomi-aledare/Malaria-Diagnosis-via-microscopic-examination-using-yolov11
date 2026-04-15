@@ -3,6 +3,7 @@ import cv2
 from pathlib import Path
 import os
 import sys
+import time
 from PIL import Image
 import streamlit as st
 from ultralytics import YOLO
@@ -266,3 +267,98 @@ if "diagnosis_result" not in st.session_state:
     st.session_state.diagnosis_result = None   # None | "positive" | "negative"
 if "mode" not in st.session_state:
     st.session_state.mode = "Image"
+
+
+# ── LOGIN PAGE ──
+# ══════════════════════════════════════════════════════════════════════════════
+def login_page():
+    col_l, col_m, col_r = st.columns([1, 1.2, 1])
+    with col_m:
+        st.markdown("""
+        <div style='text-align:center; padding: 3rem 0 2rem;'>
+            <div style='font-size:3.5rem;'>🔬</div>
+            <h1 style='font-family:"Playfair Display",serif; color:#0A2342;
+                       font-size:2.4rem; margin:0.3rem 0 0;'>MalariaScope</h1>
+            <p style='color:#888; font-size:0.85rem; letter-spacing:2px;
+                      text-transform:uppercase; margin-top:0.3rem;'>
+                YOLO-Powered Blood Smear Analysis
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+ 
+        with st.container():
+            st.markdown("""
+            <div style='background:white; border-radius:20px; padding:2.5rem 2.8rem;
+                        box-shadow:0 20px 60px rgba(10,35,66,0.12);
+                        border-top:5px solid #FF7F50;'>
+            """, unsafe_allow_html=True)
+ 
+            username = st.text_input("Username", placeholder="Enter your username")
+            password = st.text_input("Password", placeholder="Enter your password", type="password")
+            st.markdown("<br>", unsafe_allow_html=True)
+ 
+            if st.button("🔐  Login", use_container_width=True):
+                if username =="admin" and password =="admin123":
+                    with st.spinner("Authenticating…"):
+                        time.sleep(0.8)
+                    st.session_state.authenticated = True
+                    st.session_state.page = "Home"
+                    st.rerun()
+                else:
+                    st.error("Invalid username or password.")
+ 
+            st.markdown("</div>", unsafe_allow_html=True)
+ 
+        st.markdown("""
+        <p style='text-align:center; color:#aaa; font-size:0.78rem; margin-top:2rem;'>
+            Secure access · Medical use only
+        </p>
+        """, unsafe_allow_html=True)
+ 
+ # SIDEBAR (post-login)
+# ══════════════════════════════════════════════════════════════════════════════
+def render_sidebar():
+    with st.sidebar:
+        st.markdown("""
+        <div class="sidebar-logo">
+            <div style="font-size:2rem;">🔬</div>
+            <h1>MalariaScope</h1>
+            <p>Diagnostic System</p>
+        </div>
+        """, unsafe_allow_html=True)
+ 
+        nav = st.radio(
+            "Navigation",
+            ["🏠  Home", "🔬  Diagnosis", "ℹ️  About"],
+            label_visibility="collapsed",
+            index=["🏠  Home", "🔬  Diagnosis", "ℹ️  About"].index(
+                {"Home": "🏠  Home", "Diagnosis": "🔬  Diagnosis", "About": "ℹ️  About"}
+                .get(st.session_state.page, "🏠  Home")
+            )
+        )
+        st.session_state.page = {"🏠  Home": "Home", "🔬  Diagnosis": "Diagnosis", "ℹ️  About": "About"}[nav]
+ 
+        # Mode selector shown only on Diagnosis page
+        if st.session_state.page == "Diagnosis":
+            st.markdown("---")
+            st.markdown("<p style='font-size:0.8rem; opacity:0.6; letter-spacing:1px; text-transform:uppercase;'>Mode</p>",
+                        unsafe_allow_html=True)
+            mode = st.radio("Mode", ["🖼  Image", "🎥  Video"],
+                            label_visibility="collapsed",
+                            index=0 if st.session_state.mode == "Image" else 1)
+            st.session_state.mode = "Image" if "Image" in mode else "Video"
+ 
+        st.markdown("---")
+        st.markdown("""
+        <div style='padding: 1rem 0; font-size:0.78rem; opacity:0.4; text-align:center;'>
+            DetectMalApp v1.0<br>YOLO Object Detection
+        </div>
+        """, unsafe_allow_html=True)
+ 
+        if st.button("🚪  Logout", use_container_width=True):
+            st.session_state.authenticated = False
+            st.session_state.diagnosis_result = None
+            st.session_state.show_summary = False
+            st.rerun()
+ 
+ 
