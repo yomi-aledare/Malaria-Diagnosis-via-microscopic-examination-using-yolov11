@@ -9,6 +9,7 @@ import streamlit as st
 from ultralytics import YOLO
 
 # ── Page config ────────────────────────────────────────────────────────────────
+# Set the page title, icon, layout, and initial sidebar state for a polished look
 st.set_page_config(
     page_title="BoboMal - Malaria Diagnosis App",
     page_icon="🔬",
@@ -17,6 +18,7 @@ st.set_page_config(
 )
 
 # ── Global CSS ─────────────────────────────────────────────────────────────────
+# Custom CSS to style the entire app, including sidebar, buttons, and result banners
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Roboto:wght@300;400;500&display=swap');
@@ -41,8 +43,28 @@ html, body, [class*="css"] {
 section[data-testid="stSidebar"] {
     background: var(--navy) !important;
     border-right: 3px solid var(--blue);
+    min-width: 240px !important;
 }
 section[data-testid="stSidebar"] * { color: var(--cream) !important; }
+
+/* ── Hide ALL sidebar collapse/expand controls — sidebar is always open ── */
+/* Collapse button inside the open sidebar */
+section[data-testid="stSidebar"] button[data-testid="stBaseButton-headerNoPadding"],
+section[data-testid="stSidebar"] [data-testid="stSidebarCollapseButton"],
+section[data-testid="stSidebar"] [data-testid="stSidebarCollapseButton"] button {
+    display: none !important;
+    visibility: hidden !important;
+}
+/* Re-open button shown when sidebar is collapsed */
+button[data-testid="stSidebarCollapsedControl"] {
+    display: none !important;
+    visibility: hidden !important;
+}
+/* Catch-all for any header/chevron buttons Streamlit injects */
+section[data-testid="stSidebar"] header,
+section[data-testid="stSidebar"] header button {
+    display: none !important;
+}
 
 /* ── Sidebar logo ── */
 .sidebar-logo {
@@ -70,7 +92,7 @@ section[data-testid="stSidebar"] * { color: var(--cream) !important; }
 
 /* ── Sidebar nav buttons — hide radio circles, style as pills ── */
 div[data-testid="stRadio"] > div { gap: 0 !important; }
-/* div[data-testid="stRadio"] [data-baseweb="radio"] { display: none !important; } */
+/*div[data-testid="stRadio"] [data-baseweb="radio"] { display: none !important; }*/
 div[data-testid="stRadio"] label {
     display: flex !important;
     align-items: center;
@@ -207,7 +229,7 @@ div[data-testid="stRadio"] label:has(input:checked) {
 .about-card p { line-height:1.8; color:#444; }
 .tag {
     display: inline-block;
-    background: var(--navy-lt);
+    background: var(--blue);
     color: #FFFDF7 !important;
     font-size: 0.73rem;
     padding: 5px 13px;
@@ -258,7 +280,17 @@ div[data-testid="stRadio"] label:has(input:checked) {
 }
 .stat-card .s-label { font-size:0.82rem; color:#888; margin-top:2px; }
 
-/* ── Login card ── */
+/* ── Login card — targets the st.container via its data-testid key ── */
+div[data-testid="stVerticalBlock"]:has(> div[data-testid="stVerticalBlockBorderWrapper"]) 
+    div[data-testid="stVerticalBlockBorderWrapper"] {
+    background: white !important;
+    border-radius: 20px !important;
+    box-shadow: 0 20px 60px rgba(10,35,66,0.12) !important;
+    border-top: 5px solid var(--blue) !important;
+    padding: 2rem 2.5rem 2.5rem !important;
+}
+
+/* Fallback class for older Streamlit versions */
 .login-card {
     background: white;
     border-radius: 20px;
@@ -267,13 +299,9 @@ div[data-testid="stRadio"] label:has(input:checked) {
     border-top: 5px solid var(--blue);
 }
 
-/* ── Buttons ── */
+/* ── Buttons — blue bg, navy hover ── */
 .stButton > button {
-    background: var(--blue) !important;
-}
-
-.stButton > button {
-    background: var(--blue) !important;
+    background: var(--navy) !important;
     color: white !important;
     border: none !important;
     border-radius: 10px !important;
@@ -283,10 +311,13 @@ div[data-testid="stRadio"] label:has(input:checked) {
     transition: background 0.2s, transform 0.1s !important;
 }
 .stButton > button:hover {
-    background: var(--blue-dk) !important;
+    background: var(--blue) !important;
     transform: translateY(-1px) !important;
 }
-.stButton > button:active { transform: translateY(0) !important; }
+.stButton > button:active {
+    background: var(--navy-lt) !important;
+    transform: translateY(0) !important;
+}
 
 /* Secondary buttons (mode toggles) */
 .stButton > button[kind="secondary"] {
@@ -295,7 +326,10 @@ div[data-testid="stRadio"] label:has(input:checked) {
     border: 2px solid var(--blue) !important;
 }
 .stButton > button[kind="secondary"]:hover {
-    background: var(--blue-lt) !important;
+    background: var(--navy) !important;
+    color: white !important;
+    border-color: var(--navy) !important;
+    transform: translateY(-1px) !important;
 }
 
 /* ── File uploader ── */
@@ -324,7 +358,6 @@ hr { border-color: rgba(255,253,247,0.12) !important; }
 
 # ── Session state ──────────────────────────────────────────────────────────────
 # Initialize session state variables for authentication, page routing, and diagnosis results
-
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
 if "page" not in st.session_state:
@@ -338,7 +371,7 @@ if "mode" not in st.session_state:
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# LOGIN PAGE
+# LOGIN PAGE - authentication logic and styled login form
 # ══════════════════════════════════════════════════════════════════════════════
 def login_page():
     col_l, col_m, col_r = st.columns([1, 1.1, 1])
@@ -357,33 +390,45 @@ def login_page():
         </div>
         """, unsafe_allow_html=True)
 
-        st.markdown('<div class="login-card">', unsafe_allow_html=True)
-        username = st.text_input("Username", placeholder="Enter your username")
-        password = st.text_input("Password", placeholder="Enter your password", type="password")
-        st.markdown("<br>", unsafe_allow_html=True)
+        with st.container(border=True):
+            st.markdown("""
+            <style>
+            div[data-testid="stVerticalBlockBorderWrapper"] {
+                border-radius: 20px !important;
+                border: none !important;
+                background: white !important;
+                box-shadow: 0 20px 60px rgba(10,35,66,0.12) !important;
+                padding: 1.5rem 2rem 2rem !important;
+                border-top: 5px solid #2986CC !important;
+                outline: none !important;
+            }
+            </style>
+            """, unsafe_allow_html=True)
 
-        if st.button("Login", use_container_width=True):
-            if username == "admin" and password == "admin123":
-                with st.spinner("Authenticating…"):
-                    time.sleep(0.8)
-                st.session_state.authenticated = True
-                st.session_state.page = "Home"
-                st.rerun()
-            else:
-                st.error("Invalid username or password.")
+            username = st.text_input("Username", placeholder="Enter your username")
+            password = st.text_input("Password", placeholder="Enter your password", type="password")
+            st.markdown("<br>", unsafe_allow_html=True)
 
-        st.markdown('</div>', unsafe_allow_html=True)
+            if st.button("Login", use_container_width=True):
+                if username == "admin" and password == "admin123":
+                    with st.spinner("Authenticating…"):
+                        time.sleep(0.8)
+                    st.session_state.authenticated = True
+                    st.session_state.page = "Home"
+                    st.rerun()
+                else:
+                    st.error("Invalid username or password.")
 
         st.markdown("""
         <p style='text-align:center; color:#aaa; font-size:0.76rem; margin-top:1.5rem;
                   font-family:"Roboto",sans-serif;'>
-            🔐Secure access · Medical use ONLY
+            🔐 Secure access · Medical use ONLY
         </p>
         """, unsafe_allow_html=True)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# SIDEBAR  — radio buttons for page navigation + logout button
+# SIDEBAR  — radio with hidden circles styled as nav buttons, plus logo and logout
 # ══════════════════════════════════════════════════════════════════════════════
 def render_sidebar():
     with st.sidebar:
@@ -391,7 +436,7 @@ def render_sidebar():
         <div class="sidebar-logo">
             <div style="font-size:2.2rem;">🔬</div>
             <h1>BoboMal</h1>
-            <p>Malaria Diagnostic System</p>
+            <p>Malaria <br> Diagnostic System</p>
         </div>
         """, unsafe_allow_html=True)
 
@@ -417,7 +462,7 @@ def render_sidebar():
         </div>
         """, unsafe_allow_html=True)
 
-        if st.button("Logout", use_container_width=True):
+        if st.button("Logout", width='stretch'):
             st.session_state.authenticated = False
             st.session_state.diagnosis_result = None
             st.session_state.show_summary = False
@@ -438,7 +483,7 @@ def home_page():
     c1, c2 = st.columns(2, gap="large")
     for col, icon, label, val in [
         (c1, "🧫", "Average Inference Time", "~2 secs"),
-        (c2, "⚠️", "Required Image Size", "640px"),
+        (c2, "⚠️", "Required Image Format", "640px"),
     ]:
         with col:
             st.markdown(f"""
@@ -495,7 +540,7 @@ def diagnosis_page():
     mode_col1, mode_col2, _ = st.columns([0.9, 0.9, 5])
     with mode_col1:
         img_type = "primary" if st.session_state.mode == "Image" else "secondary"
-        if st.button("🖼  Image", key="mode_img", use_container_width=True, type=img_type):
+        if st.button(":camera: Image", key="mode_img", use_container_width=True, type=img_type):
             st.session_state.mode = "Image"
             st.rerun()
     with mode_col2:
@@ -634,8 +679,8 @@ def diagnosis_page():
                         <span class="val">91.4%</span>
                     </div>
                     <div class="stat-row">
-                        <span>Specificity</span>
-                        <span class="val">38</span>
+                        <span>Cells Scanned</span>
+                        <span class="val">3,842</span>
                     </div>
                     <div class="stat-row">
                         <span>Inference Time</span>
@@ -650,7 +695,7 @@ def diagnosis_page():
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# ABOUT PAGE  — static content describing the project, tech stack, and how it works
+# ABOUT PAGE  — split into separate st.markdown blocks so HTML renders correctly
 # ══════════════════════════════════════════════════════════════════════════════
 def about_page():
     st.markdown("""
@@ -665,16 +710,23 @@ def about_page():
     <div class="about-card">
         <h2>🔬 BoboMal</h2>
         <p>
-            This project uses <strong>digital blood smear images</strong> to diagnose
-            malaria parasites using <strong>YOLO (You Only Look Once) object detection</strong>.
-            Giemsa-stained thin blood smears are analysed in real time, enabling fast,
-            scalable, and accurate identification of <em>Plasmodium</em> species without
-            requiring specialist laboratory personnel at the point of care.
+            This Bsc project from <strong>Miva Open University</strong> aims to provide an accessible diagnostic tool for malaria, especially in resource-limited settings, by leveraging the power of deep learning and computer vision.
+            It uses<strong>digital blood smear images</strong> to diagnose malaria parasites using <strong>YOLO (You Only Look Once) object detection</strong>. Giemsa-stained thin blood smears are analysed in real time, enabling fast,
+            scalable, and accurate identification of <em>Plasmodium</em> species without requiring specialist laboratory personnel at the point of care.
         </p>
         <p>
             The YOLO model is trained on annotated microscopy images and can distinguish
             between infected and healthy red blood cells at the cell level, producing
             confidence scores and bounding-box overlays for clinical review.
+        </p>
+
+<p>
+            Author: <strong>Yomi Aledare</strong><br>
+            Matriculation Number: <strong>2023/C/DSC/161</strong><br>
+            Supervisor: <strong>Chinonso Alaebo</strong> <br>
+            Department:  <strong>Data Science</strong><br>
+            School:  <strong>School of Computing</strong><br>
+            Year: <em>2026</em><br>
         </p>
         <h3>Key Technologies</h3>
         <div>
@@ -687,6 +739,7 @@ def about_page():
             <span class="tag">Object Detection</span>
         </div>
     </div>
+
     """, unsafe_allow_html=True)
 
     # Card 2 — How It Works grid
@@ -720,7 +773,7 @@ def about_page():
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# MODEL INFERENCE FUNCTION  —  YOLO model inference code
+# MODEL INFERENCE FUNCTION  — wire your YOLO model here
 # ══════════════════════════════════════════════════════════════════════════════
 def run_yolo_inference(image):
     # Placeholder function — replace with actual YOLO model inference code
@@ -731,8 +784,9 @@ def run_yolo_inference(image):
     time.sleep(1.8)  # Simulate inference time
     return "positive", 0.914  # Example output: (diagnosis, confidence)
 
+
 # ══════════════════════════════════════════════════════════════════════════════
-# PAGE ROUTER
+# PAGE ROUTER - renders the appropriate page based on authentication and sidebar selection
 # ══════════════════════════════════════════════════════════════════════════════
 if not st.session_state.authenticated:
     login_page()
