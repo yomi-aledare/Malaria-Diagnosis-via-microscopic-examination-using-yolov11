@@ -428,7 +428,7 @@ def login_page():
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# SIDEBAR  — radio with hidden circles styled as nav buttons, plus logo and logout
+# SIDEBAR  — logo, navigation, and logout button (only visible when authenticated)
 # ══════════════════════════════════════════════════════════════════════════════
 def render_sidebar():
     with st.sidebar:
@@ -614,6 +614,11 @@ def diagnosis_page():
         if run_btn:
             with st.spinner("Running YOLO inference…"):
                 time.sleep(1.8)   # ← replace with your model call
+                score = 0.914  # ← replace with actual confidence score from model
+                duration = 1.8  # ← replace with actual inference time
+                WBC = 500  # ← replace with actual cell count analyzed
+                WBC_infected = 50   # ← replace with actual infected cell count
+                parasite_load = WBC_infected / WBC if WBC > 0 else 0  # ← replace with actual parasite load calculation
                 
                 
                 
@@ -676,15 +681,15 @@ def diagnosis_page():
                     </div>
                     <div class="stat-row">
                         <span>Confidence</span>
-                        <span class="val">91.4%</span>
+                        <span class="val">{score*100:.1f}</span>
                     </div>
                     <div class="stat-row">
                         <span>Cells Scanned</span>
-                        <span class="val">3,842</span>
+                        <span class="val">{parasite_load:.2f}</span>
                     </div>
                     <div class="stat-row">
                         <span>Inference Time</span>
-                        <span class="val">1.8 s</span>
+                        <span class="val">{duration:.1f} s</span>
                     </div>
                     <div class="stat-row">
                         <span>Mode</span>
@@ -711,7 +716,7 @@ def about_page():
         <h2>🔬 BoboMal</h2>
         <p>
             This Bsc project from <strong>Miva Open University</strong> aims to provide an accessible diagnostic tool for malaria, especially in resource-limited settings, by leveraging the power of deep learning and computer vision.
-            It uses<strong>digital blood smear images</strong> to diagnose malaria parasites using <strong>YOLO (You Only Look Once) object detection</strong>. Giemsa-stained thin blood smears are analysed in real time, enabling fast,
+            It uses <strong>digital blood smear images</strong> to diagnose malaria parasites using <strong>YOLO (You Only Look Once) object detection</strong>. Giemsa-stained thin blood smears are analysed in real time, enabling fast,
             scalable, and accurate identification of <em>Plasmodium</em> species without requiring specialist laboratory personnel at the point of care.
         </p>
         <p>
@@ -784,7 +789,68 @@ def run_yolo_inference(image):
     time.sleep(1.8)  # Simulate inference time
     return "positive", 0.914  # Example output: (diagnosis, confidence)
 
+def run_video_inference(video):
+    # Placeholder function — replace with actual YOLO model inference code for video
+    time.sleep(2.5)  # Simulate processing time
+    return "negative", 0.872  # Example output: (diagnosis, confidence)
 
+def run_inference(input_data, mode="Image"):
+    if mode == "Image":
+        return run_yolo_inference(input_data)
+    else:
+        return run_video_inference(input_data)
+
+def classify_parasitemia(parasitemia_percent=None, parasites_per_ul=None):
+    # If percentage is provided, convert to parasites/µL for classification
+    if parasitemia_percent is not None:
+        # Approximate conversion: 1% parasitemia ≈ 50,000 parasites/µL
+        # (assuming normal RBC count of 5 million/µL)
+        parasites_per_ul_est = parasitemia_percent * 50000
+    else:
+        parasites_per_ul_est = parasites_per_ul
+    
+    # Classification logic based on parasites/µL
+    if parasites_per_ul_est is None:
+        raise ValueError("Either parasitemia_percent or parasites_per_ul must be provided")
+    
+    if parasites_per_ul_est < 50:
+        category = "Submicroscopic / low"
+        risk = "Very low"
+        percent_range = "<0.001%"
+        parasite_range = "<50/µL"
+    elif 50 <= parasites_per_ul_est < 5000:
+        category = "Low parasitemia"
+        risk = "Low"
+        percent_range = "0.002–0.1%"
+        parasite_range = "50–5,000/µL"
+    elif 5000 <= parasites_per_ul_est < 100000:
+        category = "Moderate"
+        risk = "Moderate"
+        percent_range = "0.1–2%"
+        parasite_range = "5,000–100,000/µL"
+    elif 100000 <= parasites_per_ul_est < 250000:
+        category = "High"
+        risk = "High"
+        percent_range = "2–5%"
+        parasite_range = "100,000–250,000/µL"
+    else:  # >= 250000
+        category = "Severe malaria risk (especially P. falciparum)"
+        risk = "Severe"
+        percent_range = ">5–10%"
+        parasite_range = ">250,000–500,000/µL"
+    
+    # Prepare result
+    result = {
+        'category': category,
+        'risk': risk,
+        'percent_range': percent_range,
+        'parasite_range': parasite_range,
+        'input_percent': parasitemia_percent,
+        'input_parasites_ul': parasites_per_ul,
+        'estimated_parasites_ul': round(parasites_per_ul_est, 2) if parasitemia_percent is not None else parasites_per_ul
+    }
+    
+    return result
 # ══════════════════════════════════════════════════════════════════════════════
 # PAGE ROUTER - renders the appropriate page based on authentication and sidebar selection
 # ══════════════════════════════════════════════════════════════════════════════
