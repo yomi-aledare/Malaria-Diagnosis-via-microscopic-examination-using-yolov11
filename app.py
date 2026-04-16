@@ -43,7 +43,12 @@ html, body, [class*="css"] {
 section[data-testid="stSidebar"] {
     background: var(--navy) !important;
     border-right: 3px solid var(--blue);
-    min-width: 240px !important;
+    min-width: 200px !important;
+    max-width: 200px !important;
+    width: 200px !important;
+}
+section[data-testid="stSidebar"] > div {
+    padding: 0 0.6rem !important;
 }
 section[data-testid="stSidebar"] * { color: var(--cream) !important; }
 
@@ -90,33 +95,34 @@ section[data-testid="stSidebar"] header button {
     font-family: 'Roboto', sans-serif;
 }
 
-/* ── Sidebar nav buttons — hide radio circles, style as pills ── */
-div[data-testid="stRadio"] > div { gap: 0 !important; }
-/*div[data-testid="stRadio"] [data-baseweb="radio"] { display: none !important; }*/
-div[data-testid="stRadio"] label {
-    display: flex !important;
-    align-items: center;
-    gap: 0.7rem;
-    width: 100%;
-    padding: 0.7rem 1.1rem;
-    border-radius: 10px;
+/* ── Sidebar nav buttons ── */
+section[data-testid="stSidebar"] .stButton > button {
+    background: transparent !important;
+    color: var(--blue) !important;
+    border: none !important;
+    border-radius: 10px !important;
+    text-align: left !important;
     font-family: 'Montserrat', sans-serif !important;
     font-weight: 600 !important;
     font-size: 0.88rem !important;
-    cursor: pointer;
-    transition: all 0.2s;
-    color: rgba(255,253,247,0.75) !important;
-    margin-bottom: 0.25rem;
-    background: transparent;
+    padding: 0.65rem 1.1rem !important;
+    margin-bottom: 0.2rem !important;
+    transition: background 0.2s, color 0.2s !important;
+    box-shadow: none !important;
+    justify-content: flex-start !important;
+    letter-spacing: 0.2px !important;
 }
-div[data-testid="stRadio"] label:hover {
-    background: rgba(41,134,204,0.18) !important;
-    color: white !important;
-}
-div[data-testid="stRadio"] label:has(input:checked) {
+section[data-testid="stSidebar"] .stButton > button:hover {
     background: var(--blue) !important;
     color: white !important;
-    box-shadow: 0 4px 14px rgba(41,134,204,0.35);
+    transform: none !important;
+    box-shadow: none !important;
+}
+/* Active page button — highlighted via st.session_state check + unique key CSS */
+section[data-testid="stSidebar"] div:has(button[data-testid="baseButton-secondary"][key="nav_Home"]),
+section[data-testid="stSidebar"] div:has(button[data-testid="baseButton-secondary"][key="nav_Diagnosis"]),
+section[data-testid="stSidebar"] div:has(button[data-testid="baseButton-secondary"][key="nav_About"]) {
+    border-radius: 10px;
 }
 
 /* ── Page heading ── */
@@ -440,19 +446,36 @@ def render_sidebar():
         </div>
         """, unsafe_allow_html=True)
 
-        pages = ["🏠Home", "🔬Diagnosis", "ℹ️About"]
-        page_map = {"🏠Home": "Home", "🔬Diagnosis": "Diagnosis", "ℹ️About": "About"}
-        reverse_map = {v: k for k, v in page_map.items()}
+        # Inject active-state CSS for whichever page is current
+        active = st.session_state.page
+        st.markdown(f"""
+        <style>
+        div[data-testid="stSidebar"] div[data-testid="stVerticalBlock"]
+            div[data-testid="stVerticalBlock"] > div:nth-child(1) button {{
+            background: {"var(--blue)" if active == "Home" else "transparent"} !important;
+            color: {"white" if active == "Home" else "rgba(255,253,247,0.8)"} !important;
+            box-shadow: {"0 4px 14px rgba(41,134,204,0.3)" if active == "Home" else "none"} !important;
+        }}
+        div[data-testid="stSidebar"] div[data-testid="stVerticalBlock"]
+            div[data-testid="stVerticalBlock"] > div:nth-child(2) button {{
+            background: {"var(--blue)" if active == "Diagnosis" else "transparent"} !important;
+            color: {"white" if active == "Diagnosis" else "rgba(255,253,247,0.8)"} !important;
+            box-shadow: {"0 4px 14px rgba(41,134,204,0.3)" if active == "Diagnosis" else "none"} !important;
+        }}
+        div[data-testid="stSidebar"] div[data-testid="stVerticalBlock"]
+            div[data-testid="stVerticalBlock"] > div:nth-child(3) button {{
+            background: {"var(--blue)" if active == "About" else "transparent"} !important;
+            color: {"white" if active == "About" else "rgba(255,253,247,0.8)"} !important;
+            box-shadow: {"0 4px 14px rgba(41,134,204,0.3)" if active == "About" else "none"} !important;
+        }}
+        </style>
+        """, unsafe_allow_html=True)
 
-        current_idx = pages.index(reverse_map.get(st.session_state.page, "🏠Home"))
-
-        nav = st.radio(
-            "Navigation",
-            pages,
-            index=current_idx,
-            label_visibility="collapsed",
-        )
-        st.session_state.page = page_map[nav]
+        nav_items = [("🏠", "Home"), ("🔬", "Diagnosis"), ("ℹ️", "About")]
+        for icon, label in nav_items:
+            if st.button(f"{icon}  {label}", key=f"nav_{label}", use_container_width=True):
+                st.session_state.page = label
+                st.rerun()
 
         st.markdown("<hr>", unsafe_allow_html=True)
         st.markdown("""
