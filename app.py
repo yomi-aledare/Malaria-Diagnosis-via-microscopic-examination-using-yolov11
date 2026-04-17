@@ -372,8 +372,16 @@ if "show_summary" not in st.session_state:
     st.session_state.show_summary = False
 if "diagnosis_result" not in st.session_state:
     st.session_state.diagnosis_result = None
-if "mode" not in st.session_state:
-    st.session_state.mode = "Image"
+if "confidence" not in st.session_state:
+    st.session_state.confidence = 0.0
+if "annotated_image" not in st.session_state:
+    st.session_state.annotated_image = None
+if "parasite_count" not in st.session_state:
+    st.session_state.parasite_count = 0
+if "inference_time" not in st.session_state:
+    st.session_state.inference_time = 0.0
+if "uploaded_file" not in st.session_state:
+    st.session_state.uploaded_file = None
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -549,7 +557,7 @@ def home_page():
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# DIAGNOSIS PAGE  — mode selector on this page (not sidebar)
+# DIAGNOSIS PAGE  — image-only upload + full results panel
 # ══════════════════════════════════════════════════════════════════════════════
 def diagnosis_page():
     st.markdown("""
@@ -559,68 +567,54 @@ def diagnosis_page():
     </div>
     """, unsafe_allow_html=True)
 
-    # ── Mode toggle (Image / Video) ───────────────────────────────────────────
-    mode_col1, mode_col2, _ = st.columns([0.9, 0.9, 5])
-    with mode_col1:
-        img_type = "primary" if st.session_state.mode == "Image" else "secondary"
-        if st.button(":camera: Image", key="mode_img", width='stretch', type=img_type):
-            st.session_state.mode = "Image"
-            st.rerun()
-    with mode_col2:
-        vid_type = "primary" if st.session_state.mode == "Video" else "secondary"
-        if st.button("🎥  Video", key="mode_vid", width='stretch', type=vid_type):
-            st.session_state.mode = "Video"
-            st.rerun()
-
-    st.markdown("<br>", unsafe_allow_html=True)
-
     left_col, right_col = st.columns([1.1, 1], gap="large")
 
-    # ── Upload / Feed ──────────────────────────────────────────────────────────
+    # ── Upload panel ──────────────────────────────────────────────────────────
     with left_col:
-        st.markdown(f"""
+        st.markdown("""
         <div style='font-size:0.73rem; font-weight:700; letter-spacing:1.5px;
                     text-transform:uppercase; color:#999; margin-bottom:0.6rem;
                     font-family:"Montserrat",sans-serif;'>
-            {'🖼  Image Feed' if st.session_state.mode == 'Image' else '🎥  Video Feed'}
+            🖼  Image Feed
         </div>
         """, unsafe_allow_html=True)
 
-        if st.session_state.mode == "Image":
-            uploaded = st.file_uploader(
-                "Upload blood smear image",
-                type=["jpg", "jpeg", "png", "bmp", "tiff"],
-                label_visibility="collapsed",
-            )
-            if uploaded:
-                img = Image.open(uploaded)
-                st.image(img, width='stretch',
-                         caption="Uploaded smear — ready for analysis")
-                st.session_state.uploaded_file = uploaded
-            else:
-                st.markdown("""
-                <div class="feed-zone">
-                    <div class="icon">🧬</div>
-                    <p>Drag &amp; drop a blood smear image<br>
-                    <small>JPG · PNG · BMP · TIFF</small></p>
-                </div>
-                """, unsafe_allow_html=True)
-                st.session_state.uploaded_file = None
+        uploaded = st.file_uploader(
+            "Upload blood smear image",
+            type=["jpg", "jpeg", "png", "bmp", "tiff"],
+            label_visibility="collapsed",
+        )
+        if uploaded:
+            img = Image.open(uploaded)
+            st.image(img, use_container_width=True,
+                     caption="Uploaded smear — ready for analysis")
+            st.session_state.uploaded_file = uploaded
         else:
             st.markdown("""
             <div class="feed-zone">
-                <div class="icon">🎥</div>
-                <p>Live camera feed or video upload<br>
-                <small>Connect a microscope camera or upload MP4</small></p>
+                <div class="icon">🧬</div>
+                <p>Drag &amp; drop a blood smear image<br>
+                <small>JPG · PNG · BMP · TIFF</small></p>
             </div>
             """, unsafe_allow_html=True)
-            uploaded_vid = st.file_uploader(
-                "Upload video",
-                type=["mp4", "avi", "mov"],
-                label_visibility="collapsed",
-            )
-            if uploaded_vid:
-                st.video(uploaded_vid)
+            st.session_state.uploaded_file = None
+
+        st.markdown("<br>", unsafe_allow_html=True)
+        run_btn = st.button("▶  Run Analysis", width='stretch')
+
+        if run_btn:
+            if not st.session_state.uploaded_file:
+                st.warning("Please upload a blood smear image before running analysis.")
+            else:
+                with st.spinner("Running YOLOv11 inference…"):
+                    (
+                        st.session_state.diagnosis_result,
+                        st.session_state.confidence,
+                        st.session_state.annotated_image,
+                        st.session_state.parasite_count,
+                        st.session_state.inference_time,
+                    ) = run_yolo_inference(st.session_state.uploaded_file)
+                st.session_state.show_summary = False
 
     # ── Results panel ─────────────────────────────────────────────────────────
     with right_col:
@@ -631,24 +625,6 @@ def diagnosis_page():
             🔍 Analysis Result
         </div>
         """, unsafe_allow_html=True)
-
-        run_btn = st.button("▶  Run Analysis", width='stretch')
-
-        if run_btn:
-            with st.spinner("Running YOLO inference…"):
-                time.sleep(1.8)   # ← replace with your model call
-                score = 0.914  # ← replace with actual confidence score from model
-                duration = 1.8  # ← replace with actual inference time
-                WBC = 500  # ← replace with actual cell count analyzed
-                WBC_infected = 50   # ← replace with actual infected cell count
-                parasite_load = WBC_infected / WBC if WBC > 0 else 0  # ← replace with actual parasite load calculation
-                
-                
-                
-            st.session_state.diagnosis_result = (
-                "negative" if st.session_state.diagnosis_result == "positive" else "positive"
-            )
-            st.session_state.show_summary = False
 
         if st.session_state.diagnosis_result == "negative":
             st.markdown("""
@@ -682,44 +658,69 @@ def diagnosis_page():
             </div>
             """, unsafe_allow_html=True)
 
-        st.markdown("<br>", unsafe_allow_html=True)
+        # ── Annotated image ───────────────────────────────────────────────────
+        if st.session_state.annotated_image is not None:
+            st.markdown("<br>", unsafe_allow_html=True)
+            st.markdown("""
+            <div style='font-size:0.73rem; font-weight:700; letter-spacing:1.5px;
+                        text-transform:uppercase; color:#999; margin-bottom:0.4rem;
+                        font-family:"Montserrat",sans-serif;'>
+                🖼 Detection Output
+            </div>
+            """, unsafe_allow_html=True)
+            st.image(
+                st.session_state.annotated_image,
+                use_container_width=True,
+                caption="YOLOv11 bounding-box overlay",
+            )
 
+        # ── Summary card ──────────────────────────────────────────────────────
         if st.session_state.diagnosis_result:
-            if st.button("📋  Show Summary", width='stretch'):
-                st.session_state.show_summary = not st.session_state.show_summary
+            st.markdown("<br>", unsafe_allow_html=True)
+            result_label = "Negative ✅" if st.session_state.diagnosis_result == "negative" else "Positive ⚠️"
+            result_color = "#27ae60" if st.session_state.diagnosis_result == "negative" else "#e74c3c"
+            score        = st.session_state.confidence
+            n_parasites  = st.session_state.parasite_count
+            duration     = st.session_state.inference_time
 
-            if st.session_state.show_summary:
-                result_label = "Negative ✅" if st.session_state.diagnosis_result == "negative" else "Positive ⚠️"
-                result_color = "#27ae60" if st.session_state.diagnosis_result == "negative" else "#e74c3c"
-                st.markdown(f"""
-                <div class="summary-card" style='margin-top:0.8rem;'>
-                    <h4>Analysis Summary</h4>
-                    <div class="stat-row">
-                        <span>Diagnosis</span>
-                        <span class="val" style="color:{result_color};">{result_label}</span>
-                    </div>
-                    <div class="stat-row">
-                        <span>Model</span>
-                        <span class="val">YOLOv11</span>
-                    </div>
-                    <div class="stat-row">
-                        <span>Confidence</span>
-                        <span class="val">{score*100:.1f}</span>
-                    </div>
-                    <div class="stat-row">
-                        <span>Cells Scanned</span>
-                        <span class="val">{parasite_load:.2f}</span>
-                    </div>
-                    <div class="stat-row">
-                        <span>Inference Time</span>
-                        <span class="val">{duration:.1f} s</span>
-                    </div>
-                    <div class="stat-row">
-                        <span>Mode</span>
-                        <span class="val">{st.session_state.mode}</span>
-                    </div>
+            # Volume of infection via classify_parasitemia
+            parasitemia_info = classify_parasitemia(parasites_per_ul=n_parasites * 500)
+            vol_label = parasitemia_info["category"] if st.session_state.diagnosis_result == "positive" else "None"
+            risk_label = parasitemia_info["risk"] if st.session_state.diagnosis_result == "positive" else "—"
+
+            st.markdown(f"""
+            <div class="summary-card" style='margin-top:0.2rem;'>
+                <h4>Analysis Summary</h4>
+                <div class="stat-row">
+                    <span>Class</span>
+                    <span class="val" style="color:{result_color};">{result_label}</span>
                 </div>
-                """, unsafe_allow_html=True)
+                <div class="stat-row">
+                    <span>Confidence Score</span>
+                    <span class="val">{score*100:.1f}%</span>
+                </div>
+                <div class="stat-row">
+                    <span>Parasites Detected</span>
+                    <span class="val">{n_parasites}</span>
+                </div>
+                <div class="stat-row">
+                    <span>Volume of Infection</span>
+                    <span class="val">{vol_label}</span>
+                </div>
+                <div class="stat-row">
+                    <span>Risk Level</span>
+                    <span class="val" style="color:{result_color};">{risk_label}</span>
+                </div>
+                <div class="stat-row">
+                    <span>Inference Time</span>
+                    <span class="val">{duration:.2f} s</span>
+                </div>
+                <div class="stat-row">
+                    <span>Model</span>
+                    <span class="val">YOLOv11</span>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -803,25 +804,69 @@ def about_page():
 # ══════════════════════════════════════════════════════════════════════════════
 # MODEL INFERENCE FUNCTION  — wire your YOLO model here
 # ══════════════════════════════════════════════════════════════════════════════
+@st.cache_resource
+def load_yolo_model():
+    """Load the YOLOv11 model once and cache it across Streamlit reruns."""
+    weight_path = Path("weights") / "best.pt"
+    if not weight_path.exists():
+        st.error(f"Model weights not found at '{weight_path}'. "
+                 "Please ensure 'weights/best.pt' exists.")
+        st.stop()
+    return YOLO(str(weight_path))
+
 def run_yolo_inference(image):
-    # Placeholder function — replace with actual YOLO model inference code
-    # Example:
-    # model = YOLO("path/to/your/yolo-model.pt")
-    # results = model(image)
-    # Process results to determine diagnosis and confidence
-    time.sleep(1.8)  # Simulate inference time
-    return "positive", 0.914  # Example output: (diagnosis, confidence)
+    """
+    Run YOLOv11 inference on a single image.
 
-def run_video_inference(video):
-    # Placeholder function — replace with actual YOLO model inference code for video
-    time.sleep(2.5)  # Simulate processing time
-    return "negative", 0.872  # Example output: (diagnosis, confidence)
+    Parameters
+    ----------
+    image : UploadedFile or PIL.Image.Image
 
-def run_inference(input_data, mode="Image"):
-    if mode == "Image":
-        return run_yolo_inference(input_data)
+    Returns
+    -------
+    diagnosis      : str   — "positive" or "negative"
+    confidence     : float — top detection confidence (0–1)
+    annotated_img  : PIL.Image.Image — image with bounding boxes drawn
+    parasite_count : int   — number of detected parasite instances
+    inference_time : float — wall-clock seconds for model.predict()
+    """
+    import numpy as np
+
+    CONF_THRESHOLD = 0.25
+
+    model = load_yolo_model()
+
+    # Accept either a Streamlit UploadedFile or a PIL Image
+    if not isinstance(image, Image.Image):
+        image = Image.open(image)
+    pil_img  = image.convert("RGB")
+    img_array = np.array(pil_img)
+
+    t0 = time.perf_counter()
+    results = model.predict(source=img_array, conf=CONF_THRESHOLD, verbose=False)
+    inference_time = time.perf_counter() - t0
+
+    # ── Collect detections ────────────────────────────────────────────────────
+    all_confidences = []
+    for r in results:
+        if r.boxes is not None and len(r.boxes) > 0:
+            all_confidences.extend(r.boxes.conf.cpu().tolist())
+
+    parasite_count = len(all_confidences)
+
+    if all_confidences:
+        top_confidence = float(max(all_confidences))
+        diagnosis = "positive"
     else:
-        return run_video_inference(input_data)
+        top_confidence = 0.0
+        diagnosis = "negative"
+
+    # ── Draw bounding boxes onto the image ───────────────────────────────────
+    annotated_bgr = results[0].plot()          # numpy BGR array with boxes drawn
+    annotated_rgb = cv2.cvtColor(annotated_bgr, cv2.COLOR_BGR2RGB)
+    annotated_pil = Image.fromarray(annotated_rgb)
+
+    return diagnosis, top_confidence, annotated_pil, parasite_count, inference_time
 
 def classify_parasitemia(parasitemia_percent=None, parasites_per_ul=None):
     # If percentage is provided, convert to parasites/µL for classification
