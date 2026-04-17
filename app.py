@@ -415,7 +415,7 @@ def login_page():
             password = st.text_input("Password", placeholder="Enter your password", type="password")
             st.markdown("<br>", unsafe_allow_html=True)
 
-            if st.button("Login", use_container_width=True):
+            if st.button("Login", width='stretch'):
                 if username == "admin" and password == "admin123":
                     with st.spinner("Authenticating…"):
                         time.sleep(0.8)
@@ -473,7 +473,7 @@ def render_sidebar():
 
         nav_items = [("🏠", "Home"), ("🔬", "Diagnosis"), ("ℹ️", "About")]
         for icon, label in nav_items:
-            if st.button(f"{icon}  {label}", key=f"nav_{label}", use_container_width=True):
+            if st.button(f"{icon}  {label}", key=f"nav_{label}", width='stretch'):
                 st.session_state.page = label
                 st.rerun()
 
@@ -563,12 +563,12 @@ def diagnosis_page():
     mode_col1, mode_col2, _ = st.columns([0.9, 0.9, 5])
     with mode_col1:
         img_type = "primary" if st.session_state.mode == "Image" else "secondary"
-        if st.button(":camera: Image", key="mode_img", use_container_width=True, type=img_type):
+        if st.button(":camera: Image", key="mode_img", width='stretch', type=img_type):
             st.session_state.mode = "Image"
             st.rerun()
     with mode_col2:
         vid_type = "primary" if st.session_state.mode == "Video" else "secondary"
-        if st.button("🎥  Video", key="mode_vid", use_container_width=True, type=vid_type):
+        if st.button("🎥  Video", key="mode_vid", width='stretch', type=vid_type):
             st.session_state.mode = "Video"
             st.rerun()
 
@@ -594,7 +594,7 @@ def diagnosis_page():
             )
             if uploaded:
                 img = Image.open(uploaded)
-                st.image(img, use_container_width=True,
+                st.image(img, width='stretch',
                          caption="Uploaded smear — ready for analysis")
                 st.session_state.uploaded_file = uploaded
             else:
@@ -632,7 +632,7 @@ def diagnosis_page():
         </div>
         """, unsafe_allow_html=True)
 
-        run_btn = st.button("▶  Run Analysis", use_container_width=True)
+        run_btn = st.button("▶  Run Analysis", width='stretch')
 
         if run_btn:
             with st.spinner("Running YOLO inference…"):
@@ -685,7 +685,7 @@ def diagnosis_page():
         st.markdown("<br>", unsafe_allow_html=True)
 
         if st.session_state.diagnosis_result:
-            if st.button("📋  Show Summary", use_container_width=True):
+            if st.button("📋  Show Summary", width='stretch'):
                 st.session_state.show_summary = not st.session_state.show_summary
 
             if st.session_state.show_summary:
