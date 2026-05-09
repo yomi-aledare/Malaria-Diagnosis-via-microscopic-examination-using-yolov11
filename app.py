@@ -382,6 +382,8 @@ if "inference_time" not in st.session_state:
     st.session_state.inference_time = 0.0
 if "uploaded_file" not in st.session_state:
     st.session_state.uploaded_file = None
+if "parasite_name" not in st.session_state:
+    st.session_state.parasite_name = None
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -514,7 +516,7 @@ def home_page():
     c1, c2 = st.columns(2, gap="large")
     for col, icon, label, val in [
         (c1, "🧫", "Average Inference Time", "~2 secs"),
-        (c2, "⚠️", "Required Image Format", "640px"),
+        (c2, "⚠️", "Required Image Size", "640px"),
     ]:
         with col:
             st.markdown(f"""
@@ -586,7 +588,7 @@ def diagnosis_page():
         )
         if uploaded:
             img = Image.open(uploaded)
-            st.image(img, use_container_width=True,
+            st.image(img, width='stretch',
                      caption="Uploaded smear — ready for analysis")
             st.session_state.uploaded_file = uploaded
         else:
@@ -613,6 +615,7 @@ def diagnosis_page():
                         st.session_state.annotated_image,
                         st.session_state.parasite_count,
                         st.session_state.inference_time,
+                        st.session_state.parasite_name,
                     ) = run_yolo_inference(st.session_state.uploaded_file)
                 st.session_state.show_summary = False
 
@@ -670,11 +673,10 @@ def diagnosis_page():
             """, unsafe_allow_html=True)
             st.image(
                 st.session_state.annotated_image,
-                use_container_width=True,
+                width='stretch',
                 caption="YOLOv11 bounding-box overlay",
             )
 
-        # ── Summary card ──────────────────────────────────────────────────────
         if st.session_state.diagnosis_result:
             st.markdown("<br>", unsafe_allow_html=True)
             result_label = "Negative ✅" if st.session_state.diagnosis_result == "negative" else "Positive ⚠️"
@@ -682,25 +684,37 @@ def diagnosis_page():
             score        = st.session_state.confidence
             n_parasites  = st.session_state.parasite_count
             duration     = st.session_state.inference_time
+            parasite_name = st.session_state.parasite_name
 
             # Volume of infection via classify_parasitemia
             parasitemia_info = classify_parasitemia(parasites_per_ul=n_parasites * 500)
             vol_label = parasitemia_info["category"] if st.session_state.diagnosis_result == "positive" else "None"
             risk_label = parasitemia_info["risk"] if st.session_state.diagnosis_result == "positive" else "—"
 
+            # Build optional Parasite Name row (only shown when positive)
+            parasite_name_row = ""
+            if st.session_state.diagnosis_result == "positive" and parasite_name:
+                parasite_name_row = "P. " + parasite_name
+            else:
+                parasite_name_row = "N/A"
+
             st.markdown(f"""
             <div class="summary-card" style='margin-top:0.2rem;'>
                 <h4>Analysis Summary</h4>
                 <div class="stat-row">
-                    <span>Class</span>
+                    <span>Category: </span>
                     <span class="val" style="color:{result_color};">{result_label}</span>
+                </div>
+                <div class="stat-row">
+                    <span>Parasite Name</span>
+                    <span class="val" style="color:{result_color};">{parasite_name_row}</span>
                 </div>
                 <div class="stat-row">
                     <span>Confidence Score</span>
                     <span class="val">{score*100:.1f}%</span>
                 </div>
                 <div class="stat-row">
-                    <span>Parasites Detected</span>
+                    <span>Total Count</span>
                     <span class="val">{n_parasites}</span>
                 </div>
                 <div class="stat-row">
@@ -802,7 +816,7 @@ def about_page():
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# MODEL INFERENCE FUNCTION  — wire your YOLO model here
+# MODEL INFERENCE FUNCTION  —  loads YOLOv11 once and runs inference on uploaded images, returning structured results
 # ══════════════════════════════════════════════════════════════════════════════
 @st.cache_resource
 def load_yolo_model():
@@ -824,22 +838,31 @@ def run_yolo_inference(image):
 
     Returns
     -------
-    diagnosis      : str   — "positive" or "negative"
-    confidence     : float — top detection confidence (0–1)
+    diagnosis      : str        — "positive" or "negative"
+    confidence     : float      — top detection confidence (0–1)
     annotated_img  : PIL.Image.Image — image with bounding boxes drawn
-    parasite_count : int   — number of detected parasite instances
-    inference_time : float — wall-clock seconds for model.predict()
+    parasite_count : int        — positive-class count if positive, total count if negative
+    inference_time : float      — wall-clock seconds for model.predict()
+    parasite_name  : str | None — "Falciparum", "Vivax", or None
     """
     import numpy as np
 
     CONF_THRESHOLD = 0.25
+
+    # Classes that map to each Plasmodium species
+    FALCIPARUM_CLASSES = {'Seg-F', 'F-R', 'F-S', 'F-T'}
+    VIVAX_CLASSES      = {'V-G', 'V-R', 'V-S', 'V-T'}
+    POSITIVE_CLASSES   = FALCIPARUM_CLASSES | VIVAX_CLASSES
 
     model = load_yolo_model()
 
     # Accept either a Streamlit UploadedFile or a PIL Image
     if not isinstance(image, Image.Image):
         image = Image.open(image)
-    pil_img  = image.convert("RGB")
+    pil_img = image.convert("RGB")
+
+    # ── Resize to 640×640 before inference ───────────────────────────────────
+    pil_img = pil_img.resize((640, 640), Image.LANCZOS)
     img_array = np.array(pil_img)
 
     t0 = time.perf_counter()
@@ -847,26 +870,50 @@ def run_yolo_inference(image):
     inference_time = time.perf_counter() - t0
 
     # ── Collect detections ────────────────────────────────────────────────────
-    all_confidences = []
+    all_confidences      = []
+    positive_confidences = []
+    diagnosis            = "negative"
+    parasite_name        = None
+    detected_species     = set()   # track which positive species appear
+
     for r in results:
-        if r.boxes is not None and len(r.boxes) > 0:
-            all_confidences.extend(r.boxes.conf.cpu().tolist())
+        if r.boxes is None or len(r.boxes) == 0:
+            continue
 
-    parasite_count = len(all_confidences)
+        confs   = r.boxes.conf.cpu().tolist()
+        classes = r.boxes.cls.cpu().tolist()
+        all_confidences.extend(confs)
 
-    if all_confidences:
-        top_confidence = float(max(all_confidences))
-        diagnosis = "positive"
-    else:
-        top_confidence = 0.0
-        diagnosis = "negative"
+        for conf, cls_idx in zip(confs, classes):
+            class_name = model.names[int(cls_idx)]
+            if class_name in FALCIPARUM_CLASSES:
+                diagnosis = "positive"
+                detected_species.add("Falciparum")
+                positive_confidences.append(conf)
+            elif class_name in VIVAX_CLASSES:
+                diagnosis = "positive"
+                detected_species.add("Vivax")
+                positive_confidences.append(conf)
+
+    # Determine parasite name (prefer Falciparum if both detected)
+    if "Falciparum" in detected_species and "Vivax" in detected_species:
+        parasite_name = "Falciparum & Vivax"
+    elif "Falciparum" in detected_species:
+        parasite_name = "Falciparum"
+    elif "Vivax" in detected_species:
+        parasite_name = "Vivax"
+
+    # Count: positive-class detections when positive, all detections when negative
+    parasite_count = len(positive_confidences) if diagnosis == "positive" else len(all_confidences)
+    top_confidence = float(max(positive_confidences if diagnosis == "positive" else all_confidences)) \
+                     if (positive_confidences or all_confidences) else 0.0
 
     # ── Draw bounding boxes onto the image ───────────────────────────────────
     annotated_bgr = results[0].plot()          # numpy BGR array with boxes drawn
     annotated_rgb = cv2.cvtColor(annotated_bgr, cv2.COLOR_BGR2RGB)
     annotated_pil = Image.fromarray(annotated_rgb)
 
-    return diagnosis, top_confidence, annotated_pil, parasite_count, inference_time
+    return diagnosis, top_confidence, annotated_pil, parasite_count, inference_time, parasite_name
 
 def classify_parasitemia(parasitemia_percent=None, parasites_per_ul=None):
     # If percentage is provided, convert to parasites/µL for classification
