@@ -847,7 +847,7 @@ def run_yolo_inference(image):
     """
     import numpy as np
 
-    CONF_THRESHOLD = 0.25
+    CONF_THRESHOLD = 0.45
 
     # Classes that map to each Plasmodium species
     FALCIPARUM_CLASSES = {'Seg-F', 'F-R', 'F-S', 'F-T'}

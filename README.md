@@ -45,7 +45,7 @@ Traditional malaria diagnosis requires a trained microscopist to manually scan h
 |---|---|
 | Architecture | YOLOv11 (Ultralytics) |
 | Input resolution | 640 × 640 px |
-| Confidence threshold | 0.25 |
+| Confidence threshold | 0.45 |
 | Weight file | `weights/best.pt` |
 | Training data | Annotated Giemsa-stained microscopy images |
 | Positive classes | `Seg-F`, `F-R`, `F-S`, `F-T`, `V-G`, `V-R`, `V-S`, `V-T` |
@@ -171,7 +171,7 @@ The app will open in your browser at `http://localhost:8501`.
 
 | Username | Password |
 |---|---|
-| `admin` | `admin123` |
+| `admin` | `*****` |
 
 > **Note:** Update credentials in `app.py` before any deployment. The current credentials are for development/demonstration only.
 
